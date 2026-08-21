@@ -21,7 +21,7 @@ func TestFeedbackHandler_OK(t *testing.T) {
 	u.Start()
 	defer u.Stop()
 
-	h := trigger.NewFeedbackHandler(u)
+	h := trigger.NewFeedbackHandler(u, nil)
 	body, _ := json.Marshal(trigger.FeedbackRequest{
 		KnowledgeIDs: []string{"id-001"},
 		Outcome:      true,
@@ -44,7 +44,7 @@ func TestFeedbackHandler_OK(t *testing.T) {
 
 func TestFeedbackHandler_MissingIDs(t *testing.T) {
 	u := newTestUpdater()
-	h := trigger.NewFeedbackHandler(u)
+	h := trigger.NewFeedbackHandler(u, nil)
 	body, _ := json.Marshal(trigger.FeedbackRequest{KnowledgeIDs: nil, Outcome: true})
 	req := httptest.NewRequest(http.MethodPost, "/v1/feedback", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
@@ -60,7 +60,7 @@ func TestFeedbackHandler_Evaluator(t *testing.T) {
 	u := knowledge.NewScoreUpdater(nil, "test", 8)
 	// We can't intercept easily — just verify the handler passes evaluator through
 	// by checking the FeedbackRequest round-trip
-	h := trigger.NewFeedbackHandler(u)
+	h := trigger.NewFeedbackHandler(u, nil)
 
 	body, _ := json.Marshal(trigger.FeedbackRequest{
 		KnowledgeIDs: []string{"id-001"},
