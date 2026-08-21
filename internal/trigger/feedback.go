@@ -11,6 +11,7 @@ import (
 type FeedbackRequest struct {
 	KnowledgeIDs []string `json:"knowledge_ids"`
 	Outcome      bool     `json:"outcome"` // true = success
+	Evaluator    string   `json:"evaluator,omitempty"` // e.g. "ci", "eval"
 }
 
 // FeedbackHandler handles POST /v1/feedback.
@@ -43,6 +44,7 @@ func (h *FeedbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.updater.Send(knowledge.FeedbackEvent{
 		KnowledgeIDs: req.KnowledgeIDs,
 		Outcome:      req.Outcome,
+		Evaluator:    req.Evaluator,
 	})
 
 	w.Header().Set("Content-Type", "application/json")
