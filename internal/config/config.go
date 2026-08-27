@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/flipslidersand/reasoning-mesh/internal/validate"
 )
 
 // maxConfigSize limits config file reads to 1 MiB to prevent OOM from oversized files.
@@ -42,8 +44,14 @@ type OllamaConfig struct {
 }
 
 type QdrantConfig struct {
-	Endpoint    string            `yaml:"endpoint"`
-	Collections map[string]string `yaml:"collections"`
+	Endpoint        string            `yaml:"endpoint"`
+	Collections     map[string]string `yaml:"collections"`
+	// UpsertBatchSize controls how many points are sent per BulkUpsert call
+	// in Extractor.Run. Default 0 means the extractor uses its built-in default (32).
+	UpsertBatchSize int               `yaml:"upsert_batch_size"`
+	// TimeoutSeconds is the HTTP client timeout for Qdrant requests.
+	// Default 0 means the client uses its built-in default (30s).
+	TimeoutSeconds  int               `yaml:"timeout_seconds"`
 }
 
 type EmbedderConfig struct {
@@ -66,7 +74,7 @@ type ScorerConfig struct {
 	TaskBoost       float64 `yaml:"task_boost"`
 }
 
-// Validate returns an error listing all missing required fields.
+// Validate returns an error listing all missing or invalid required fields.
 func (c *Config) Validate() error {
 	var errs []string
 	if c.Ollama.Endpoint == "" {
@@ -89,6 +97,17 @@ func (c *Config) Validate() error {
 	}
 	if c.Ollama.Models["knowledge"] == "" {
 		errs = append(errs, "ollama.models.knowledge required")
+	}
+	// Validate each collection name to prevent path traversal via config.
+	for key, name := range c.Qdrant.Collections {
+		if err := validate.CollectionName(name); err != nil {
+			errs = append(errs, fmt.Sprintf("qdrant.collections.%s: %v", key, err))
+		}
+	}
+	if c.Embedder.Collection != "" {
+		if err := validate.CollectionName(c.Embedder.Collection); err != nil {
+			errs = append(errs, fmt.Sprintf("embedder.collection: %v", err))
+		}
 	}
 	if len(errs) > 0 {
 		return fmt.Errorf("invalid config: %s", strings.Join(errs, "; "))
